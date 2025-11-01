@@ -1,0 +1,36 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.20"
+evm_version = "paris"
+auto_detect_solc = true
+optimizer = true
+optimizer_runs = 200
+fs_permissions = [
+  { access = "read", path = "./" },
+  { access = "write", path = "./config" }
+]
+
+# Optional: remove unsupported keys to avoid warnings
+# no_fork and fork_url are not recognized by newer foundry
+# eth_rpc_url = ""
+# fork_block_number = 0
+# no_fork = true
+
+[profile.deploy]
+src = "src"
+out = "out"
+libs = ["lib"]
+
+# Top-level remappings (NOT under [etherscan])
+remappings = [
+  "forge-std/=lib/forge-std/src/"
+]
+
+[rpc_endpoints]
+sepolia = "${RPC_URL}"
+etherscan_api_key = "${ETHERSCAN_API_KEY}"
+
+[etherscan]
+sepolia = { key = "${ETHERSCAN_API_KEY}" }
