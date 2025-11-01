@@ -18,6 +18,8 @@ const disastersRepo = require('./db/repos/disasters');
 const { getDisasterOracle } = require('./web3/contracts');
 const { sendAndWait } = require('./web3/tx');
 const authRoutes = require('./routes/auth');
+const campaignsRoutes = require('./routes/campaigns');
+const statsRoutes = require('./routes/stats');
 const { verifyAuth } = require('./middleware/auth');
 const { handleError, NotFoundError, ValidationError, AuthenticationError, AuthorizationError } = require('./utils/errorHandler');
 const logger = require('./utils/logger');
@@ -76,19 +78,28 @@ app.use((req, res, next) => {
 });
 
 // Core middleware (must be before routes to parse JSON bodies)
-// CORS configuration - restrict to specific origins
+
+// Configure trust proxy
+app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : 0);
+
+// CORS configuration
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    // In development, allow all origins
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
     
+    // In production, check against allowed origins
     const allowedOrigins = process.env.ALLOWED_ORIGINS 
       ? process.env.ALLOWED_ORIGINS.split(',')
       : ['http://localhost:3000', 'http://localhost:3001'];
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.warn(`Blocked request from origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -142,6 +153,8 @@ const uploadLimiter = rateLimit({
 
 // Auth routes with strict rate limiting
 app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/campaigns', campaignsRoutes);
+app.use('/api/stats', statsRoutes);
 
 // Disaster verification with write limiter
 app.post('/api/verify-disaster', writeLimiter, async (req, res, next) => {
@@ -615,11 +628,5 @@ app.use((req, res, next) => {
 // Global error handler - must be last
 app.use(handleError);
 
-// Start server if run directly
-if (require.main === module) {
-  app.listen(PORT, () => {
-    logger.info(`Server listening on http://localhost:${PORT}`, { env: NODE_ENV, port: PORT });
-  });
-}
-
-module.exports = { app, PORT };
+// Export the Express app
+module.exports = app;

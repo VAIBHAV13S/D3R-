@@ -3,6 +3,7 @@ import { useToast } from '../context/ToastContext';
 import styled from 'styled-components';
 import CampaignCard from '../components/CampaignCard';
 import SkeletonLoader from '../components/SkeletonLoader';
+import api from '../config/api';
 
 export default function Campaigns() {
   const [campaigns, setCampaigns] = useState([]);
@@ -19,23 +20,9 @@ export default function Campaigns() {
     // Remove empty filters
     Object.keys(filters).forEach(k => !filters[k] && params.delete(k));
     
-    fetch(`/api/campaigns?${params}`)
-      .then(async response => {
-        if (!response.ok) {
-          const error = await response.text();
-          console.error('API Error:', error);
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.text().then(text => {
-          try {
-            return text ? JSON.parse(text) : {};
-          } catch (e) {
-            console.error('Failed to parse JSON:', text);
-            throw new Error('Invalid JSON response');
-          }
-        });
-      })
-      .then(data => {
+    api.get(`/campaigns?${params}`)
+      .then(response => {
+        const data = response.data;
         setCampaigns(data.items || []);
         setTotal(data.total || 0);
       })

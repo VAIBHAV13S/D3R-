@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useWeb3 } from '../hooks/useWeb3';
 import { useToast } from '../context/ToastContext';
+import api from '../config/api';
 
 export default function MyDashboard() {
   const [activeTab, setActiveTab] = useState('donations'); // 'donations' | 'campaigns'
@@ -21,8 +22,8 @@ export default function MyDashboard() {
     setLoading(true);
     // Fetch user's donations and campaigns
     Promise.all([
-      fetch('/api/campaigns').then(r => r.ok ? r.json() : { items: [] }),
-      fetch(`/api/users/${account}/donations`).then(r => r.ok ? r.json() : { items: [] })
+      api.get('/campaigns').then(r => r.data).catch(() => ({ items: [] })),
+      api.get(`/users/${account}/donations`).then(r => r.data).catch(() => ({ items: [] }))
     ])
       .then(([campaignsData, donationsData]) => {
         // Filter campaigns created by user

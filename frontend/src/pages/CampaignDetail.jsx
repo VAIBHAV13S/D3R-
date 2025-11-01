@@ -1,43 +1,103 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useWeb3 } from '../hooks/useWeb3';
 import { useToast } from '../context/ToastContext';
 import DonateModal from '../components/DonateModal';
 import MilestoneSubmission from '../components/MilestoneSubmission';
 import { CampaignDetailSkeleton } from '../components/SkeletonLoader';
+import api from '../config/api';
 
 export default function CampaignDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [campaign, setCampaign] = useState(null);
   const [milestones, setMilestones] = useState([]);
   const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showDonateModal, setShowDonateModal] = useState(false);
   const [showMilestoneModal, setShowMilestoneModal] = useState(false);
   const { account } = useWeb3();
   const { addToast } = useToast();
 
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/campaigns/${id}`).then(r => r.ok ? r.json() : Promise.reject('Campaign not found')),
-      fetch(`/api/campaigns/${id}/milestones`).then(r => r.ok ? r.json() : { items: [] }),
-      fetch(`/api/campaigns/${id}/donations?limit=10`).then(r => r.ok ? r.json() : { items: [] })
-    ])
-      .then(([camp, mstones, dons]) => {
-        setCampaign(camp);
-        setMilestones(mstones.items || []);
-        setDonations(dons.items || []);
-      })
-      .catch(err => addToast(err.message || 'Failed to load campaign', 'error'))
-      .finally(() => setLoading(false));
-  }, [id, addToast]);
+    const fetchCampaignData = async () => {
+      if (!id || id === 'undefined' || id === 'null') {
+        setError('Invalid campaign ID');
+        setLoading(false);
+        navigate('/campaigns');
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        console.log(`Fetching data for campaign ${id}...`);
+        
+        const [campaignRes, milestonesRes, donationsRes] = await Promise.all([
+          api.get(`/campaigns/${id}`).then(r => r.data).catch(err => {
+            console.error('Error fetching campaign:', err);
+            return null;
+          }),
+          api.get(`/campaigns/${id}/milestones`).then(r => r.data).catch(err => {
+            console.error('Error fetching milestones:', err);
+            return { items: [] };
+          }),
+          api.get(`/campaigns/${id}/donations?limit=10`).then(r => r.data).catch(err => {
+            console.error('Error fetching donations:', err);
+            return { items: [] };
+          })
+        ]);
+
+        if (!campaignRes) {
+          throw new Error('Campaign not found');
+        }
+
+        setCampaign(campaignRes);
+        setMilestones(milestonesRes?.items || []);
+        setDonations(donationsRes?.items || []);
+      } catch (err) {
+        console.error('Error in fetchCampaignData:', err);
+        setError(err.message || 'Failed to load campaign');
+        addToast(err.message || 'Failed to load campaign', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCampaignData();
+  }, [id, navigate, addToast]);
 
   if (loading) return <CampaignDetailSkeleton />;
-  if (!campaign) return <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>Campaign not found</div>;
+  if (error) {
+    return (
+      <div style={{ textAlign: 'center', padding: '2rem' }}>
+        <h2>Error Loading Campaign</h2>
+        <p>{error}</p>
+        <button onClick={() => navigate('/campaigns')} style={{ marginTop: '1rem' }}>
+          Back to Campaigns
+        </button>
+      </div>
+    );
+  }
 
-  const progress = ((Number(campaign.currentAmount) || 0) / (Number(campaign.targetAmount) || 1)) * 100;
+  if (!campaign) {
+    return (
+      <div style={{ textAlign: 'center', padding: '2rem' }}>
+        <h2>Campaign Not Found</h2>
+        <p>The requested campaign could not be found.</p>
+        <button onClick={() => navigate('/campaigns')} style={{ marginTop: '1rem' }}>
+          Back to Campaigns
+        </button>
+      </div>
+    );
+  }
+  
+  // Calculate campaign progress percentage
+  const progress = ((Number(campaign.currentAmount || 0) / Number(campaign.targetAmount || 1)) * 100);
+  // IPFS gateway URL for viewing uploaded files
   const gateway = 'https://gateway.pinata.cloud/ipfs/';
-
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto' }}>
       {/* Hero Image */}

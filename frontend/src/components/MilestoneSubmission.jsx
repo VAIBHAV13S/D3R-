@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useWeb3 } from '../hooks/useWeb3';
 import { useToast } from '../context/ToastContext';
+import api from '../config/api';
 
 export default function MilestoneSubmission({ campaignId, onSuccess, onClose }) {
   const [formData, setFormData] = useState({
@@ -60,18 +61,14 @@ export default function MilestoneSubmission({ campaignId, onSuccess, onClose }) 
         formDataToSend.append('proofFile', proofFile);
       }
 
-      const res = await fetch(`/api/campaigns/${campaignId}/milestones`, {
-        method: 'POST',
-        body: formDataToSend,
-        headers: { 'x-user-id': account },
+      const response = await api.post(`/campaigns/${campaignId}/milestones`, formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'x-user-id': account
+        }
       });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to submit milestone');
-      }
-
-      const data = await res.json();
+      
+      const data = response.data;
       addToast('Milestone submitted successfully!', 'success');
       if (onSuccess) onSuccess(data);
       if (onClose) onClose();

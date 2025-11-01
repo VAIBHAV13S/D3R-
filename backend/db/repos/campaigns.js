@@ -16,16 +16,74 @@ function toOrderBy(sortBy) {
 }
 
 async function createCampaign({ title, description, disasterId, imageCID, targetAmount, deadline, creator }) {
-  const id = uuidv4();
-  const status = 'active';
-  const sql = `
-    INSERT INTO campaigns (id, title, description, disasterid, imagecid, targetamount, currentamount, creator, deadline, status)
-    VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9)
-    RETURNING id, title, description, disasterid AS "disasterId", imagecid AS "imageCID", targetamount AS "targetAmount", currentamount AS "currentAmount", creator, deadline, status, createdat AS "createdAt", updatedat AS "updatedAt";
-  `;
-  const params = [id, title, description || null, disasterId || null, imageCID || null, targetAmount, creator, deadline || null, status];
-  const { rows } = await query(sql, params);
-  return rows[0];
+  try {
+    console.log('=== CREATING CAMPAIGN IN REPO ===');
+    console.log('With data:', { title, description, disasterId, imageCID, targetAmount, deadline, creator });
+    
+    const id = uuidv4();
+    const status = 'active';
+    const sql = `
+      INSERT INTO Campaigns (
+        id, title, description, disasterId, imageCID, 
+        targetAmount, currentAmount, creator, deadline, status, 
+        createdAt, updatedAt
+      ) VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING 
+        id, title, description, 
+        disasterId AS "disasterId", 
+        imageCID AS "imageCID", 
+        targetAmount AS "targetAmount", 
+        currentAmount AS "currentAmount", 
+        creator, 
+        deadline, 
+        status, 
+        createdAt AS "createdAt", 
+        updatedAt AS "updatedAt"
+    `;
+    
+    const params = [
+      id, 
+      title, 
+      description || null, 
+      disasterId || null, 
+      imageCID || null, 
+      targetAmount, 
+      creator, 
+      deadline || null, 
+      status
+    ];
+    
+    console.log('Executing campaign SQL:', sql);
+    console.log('With params:', params);
+    
+    const { rows } = await query(sql, params);
+    console.log('Campaign query result:', JSON.stringify(rows, null, 2));
+    
+    if (!rows || !rows[0]) {
+      throw new Error('Failed to create campaign: No data returned');
+    }
+    
+    return rows[0];
+  } catch (error) {
+    console.error('=== ERROR IN CREATE CAMPAIGN REPO ===');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Error code:', error.code);
+    console.error('Error detail:', error.detail);
+    console.error('Error hint:', error.hint);
+    console.error('Error position:', error.position);
+    console.error('Error internal position:', error.internalPosition);
+    console.error('Error internal query:', error.internalQuery);
+    console.error('Error where:', error.where);
+    console.error('Error schema:', error.schema);
+    console.error('Error table:', error.table);
+    console.error('Error column:', error.column);
+    console.error('Error data type:', error.dataType);
+    console.error('Error constraint:', error.constraint);
+    
+    throw error;
+  }
 }
 
 async function listCampaigns({ page = 1, limit = 10, status, sortBy = 'createdAt', sortOrder = 'desc', featured = false }) {

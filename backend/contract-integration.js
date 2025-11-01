@@ -2,45 +2,58 @@ require('dotenv').config();
 const { ethers } = require('ethers');
 const path = require('path');
 const fs = require('fs');
-const { getContractAddresses } = require('../config/contracts');
 
-// Import our IPFS upload module
+// Import contract ABIs and utilities
 const { 
-    DOCUMENT_TYPES, 
+    getDonationTracker, 
+    getIPFSVerifier, 
+    getDisasterOracle,
+    getProvider,
+    getSigner
+} = require('./web3/contracts');
+
+// Import IPFS upload module
+const { 
     uploadFileToPinata, 
     uploadDirectoryToPinata,
     getIPFSUrl 
 } = require('./upload');
 
-// Contract ABIs - replace these paths with your actual compiled contract ABIs
-const NGO_REGISTRY_ABI = require('../abis/NGORegistry.json');
-const FUND_POOL_ABI = require('../abis/FundPool.json');
-const MILESTONE_ABI = require('./abis/Milestone.json');
-const DONATION_TRACKER_ABI = require('../abis/DonationTracker.json');
-// Add Chainlink Oracle ABI
-const CHAINLINK_ORACLE_ABI = require('../abis/ChainlinkOracle.json');
+// Document types for IPFS
+const DOCUMENT_TYPES = {
+    NGO_VERIFICATION: 'ngo-verification',
+    MILESTONE_PROOF: 'milestone-proof',
+    DISASTER_EVIDENCE: 'disaster-evidence',
+    DONATION_RECEIPT: 'donation-receipt'
+};
 
-// Get contract addresses from config
-const contractAddresses = getContractAddresses();
+// Initialize contract instances
+let donationTracker, ipfsVerifier, disasterOracle, wallet;
 
-// Setup Ethereum connection
-async function setupEthereumConnection() {
-    // For local development with Hardhat/Foundry
-    const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL || 'http://localhost:8545');
-    
-    // Use private key from .env file
-    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-    
-    // Initialize contract instances
-    const ngoRegistry = new ethers.Contract(contractAddresses.ngoRegistry, NGO_REGISTRY_ABI, wallet);
-    const fundPool = new ethers.Contract(contractAddresses.fundPool, FUND_POOL_ABI, wallet);
-    const milestone = new ethers.Contract(contractAddresses.milestone, MILESTONE_ABI, wallet);
-    const donationTracker = new ethers.Contract(contractAddresses.donationTracker, DONATION_TRACKER_ABI, wallet);
-    // Add Chainlink Oracle contract instance
-    const chainlinkOracle = new ethers.Contract(contractAddresses.chainlinkOracle, CHAINLINK_ORACLE_ABI, wallet);
-    
-    return { provider, wallet, ngoRegistry, fundPool, milestone, donationTracker, chainlinkOracle };
+/**
+ * Initialize contract connections
+ */
+async function init() {
+    try {
+        // Initialize provider and signer
+        const provider = getProvider();
+        wallet = getSigner(provider);
+
+        // Initialize contract instances
+        donationTracker = getDonationTracker();
+        ipfsVerifier = getIPFSVerifier();
+        disasterOracle = getDisasterOracle();
+
+        console.log('Contract connections initialized successfully');
+        return { provider, wallet, donationTracker, ipfsVerifier, disasterOracle };
+    } catch (error) {
+        console.error('Error initializing contract connections:', error);
+        throw error;
+    }
 }
+
+// Initialize on require
+init().catch(console.error);
 
 /**
  * Register an NGO with verification documents
@@ -50,6 +63,9 @@ async function setupEthereumConnection() {
  */
 async function registerNGO(ngoId, ngoName, documentsPath) {
     try {
+        // Ensure contracts are initialized
+        if (!donationTracker) await init();
+        
         // 1. Upload verification documents to IPFS
         const ipfsResult = await uploadDirectoryToPinata(
             documentsPath, 

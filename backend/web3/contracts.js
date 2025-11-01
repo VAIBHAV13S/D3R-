@@ -2,27 +2,61 @@ require('dotenv').config();
 const { ethers } = require('ethers');
 const { getProvider, getSigner } = require('./provider');
 
-// Minimal ABIs: replace with full ABIs if needed
+// DonationTracker ABI (expanded with view functions)
 const DonationTrackerABI = [
-  'function createCampaign(string title, uint256 targetAmount, uint256 deadline) returns (uint256)',
-  'function cancelCampaign(uint256 campaignId)',
-  'function addMilestone(uint256 campaignId, string title, string proofCID, uint256 fundAmount)',
-  'function approveMilestone(uint256 campaignId, uint256 index)',
-  'function releaseMilestoneFunds(uint256 campaignId, uint256 index, address recipient)',
-  'function donate(uint256 campaignId) payable',
+  // Read functions
+  'function campaignCount() view returns (uint256)',
+  'function campaigns(uint256) view returns (uint256 id, address creator, string memory title, uint256 targetAmount, uint256 deadline, bool isActive, uint256 totalDonated, uint256 milestonesCount)',
+  'function getCampaignMilestones(uint256 campaignId) view returns (uint256[] memory)',
+  'function getMilestone(uint256 campaignId, uint256 milestoneId) view returns (uint256 id, string memory proofCID, bool approved, uint256 fundAmount, bool released)',
+  'function getCampaignDonations(uint256 campaignId) view returns (address[] memory, uint256[] memory)',
+  
+  // Write functions
+  'function createCampaign(string memory title, uint256 targetAmount, uint256 deadline) external',
+  'function donate(uint256 campaignId) external payable',
+  'function addMilestone(uint256 campaignId, string memory title, string memory proofCID, uint256 fundAmount) external',
+  'function approveMilestone(uint256 campaignId, uint256 milestoneId) external',
+  'function releaseFunds(uint256 campaignId, uint256 milestoneId) external',
+  'function cancelCampaign(uint256 campaignId) external',
+  
+  // Events
   'event CampaignCreated(uint256 indexed campaignId, address indexed creator, string title, uint256 targetAmount, uint256 deadline)',
   'event DonationReceived(uint256 indexed campaignId, address indexed donor, uint256 amount)',
-  'event MilestoneApproved(uint256 indexed campaignId, uint256 indexed index)',
-  'event MilestoneFundsReleased(uint256 indexed campaignId, uint256 indexed index, uint256 amount, address indexed to)'
+  'event MilestoneAdded(uint256 indexed campaignId, uint256 indexed milestoneId, string title, uint256 fundAmount)',
+  'event MilestoneApproved(uint256 indexed campaignId, uint256 indexed milestoneId)',
+  'event FundsReleased(uint256 indexed campaignId, uint256 indexed milestoneId, uint256 amount, address indexed recipient)'
 ];
 
-// Placeholders for other contracts
+// IPFSVerifier ABI
 const IPFSVerifierABI = [
-  'event Verified(bytes32 indexed cidHash, bool valid)'
+  // Read functions
+  'function owner() view returns (address)',
+  'function getEntry(string memory cid) view returns (string memory, uint256, bool, string memory)',
+  'function isVerified(string memory cid) view returns (bool)',
+  
+  // Write functions
+  'function addEntry(string memory cid, string memory metadata) external',
+  'function verifyEntry(string memory cid, bool isValid) external',
+  'function transferOwnership(address newOwner) external',
+  
+  // Events
+  'event EntryAdded(string indexed cid, address indexed submitter, uint256 timestamp)',
+  'event EntryVerified(string indexed cid, bool isValid, address indexed verifier)'
 ];
+
+// DisasterOracle ABI
 const DisasterOracleABI = [
-  'function requestVerification(string disasterId, int256 latitude, int256 longitude, string eventType) returns (bytes32 requestId)',
-  'function getStatus(string disasterId) view returns (bool verified, uint256 confidence)',
+  // Read functions
+  'function owner() view returns (address)',
+  'function requested(bytes32) view returns (bool)',
+  'function getStatus(string memory disasterId) view returns (bool verified, uint256 confidence)',
+  
+  // Write functions
+  'function requestVerification(string memory disasterId, int256 lat, int256 lon, string memory eventType) external returns (bytes32 requestId)',
+  'function setResult(string memory disasterId, bool verified, uint256 confidence) external',
+  'function transferOwnership(address newOwner) external',
+  
+  // Events
   'event DisasterVerified(bytes32 indexed disasterIdHash, string disasterId, bool verified, uint256 confidence)'
 ];
 

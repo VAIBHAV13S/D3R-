@@ -3,7 +3,7 @@
 
 -- Users table
 CREATE TABLE IF NOT EXISTS Users (
-  id              VARCHAR(36) PRIMARY KEY,
+  id              VARCHAR(100) PRIMARY KEY,
   walletAddress   VARCHAR(64) NOT NULL,
   displayName     VARCHAR(100),
   totalDonated    DECIMAL(38,18) NOT NULL DEFAULT 0,
@@ -14,14 +14,14 @@ CREATE TABLE IF NOT EXISTS Users (
 
 -- Campaigns table
 CREATE TABLE IF NOT EXISTS Campaigns (
-  id              VARCHAR(36) PRIMARY KEY,
+  id              VARCHAR(100) PRIMARY KEY,
   title           VARCHAR(200) NOT NULL,
   description     TEXT,
   disasterId      VARCHAR(64),
   imageCID        VARCHAR(100),
   targetAmount    DECIMAL(38,18) NOT NULL,
   currentAmount   DECIMAL(38,18) NOT NULL DEFAULT 0,
-  creator         VARCHAR(36) NOT NULL,
+  creator         VARCHAR(100) NOT NULL,
   deadline        TIMESTAMP,
   status          VARCHAR(32) NOT NULL,
   createdAt       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -31,9 +31,9 @@ CREATE TABLE IF NOT EXISTS Campaigns (
 
 -- Donations table
 CREATE TABLE IF NOT EXISTS Donations (
-  id            VARCHAR(36) PRIMARY KEY,
-  campaignId    VARCHAR(36) NOT NULL,
-  donor         VARCHAR(36) NOT NULL,
+  id            VARCHAR(100) PRIMARY KEY,
+  campaignId    VARCHAR(100) NOT NULL,
+  donor         VARCHAR(100) NOT NULL,
   amount        DECIMAL(38,18) NOT NULL,
   txHash        VARCHAR(100) NOT NULL,
   status        VARCHAR(32) NOT NULL,
@@ -47,8 +47,8 @@ CREATE TABLE IF NOT EXISTS Donations (
 
 -- Milestones table
 CREATE TABLE IF NOT EXISTS Milestones (
-  id            VARCHAR(36) PRIMARY KEY,
-  campaignId    VARCHAR(36) NOT NULL,
+  id            VARCHAR(100) PRIMARY KEY,
+  campaignId    VARCHAR(100) NOT NULL,
   title         VARCHAR(200) NOT NULL,
   description   TEXT,
   proofCID      VARCHAR(200),
@@ -71,10 +71,10 @@ CREATE INDEX IF NOT EXISTS idx_users_createdAt ON Users (createdAt);
 
 -- UploadedFiles table to persist IPFS CIDs and metadata
 CREATE TABLE IF NOT EXISTS UploadedFiles (
-  id            VARCHAR(36) PRIMARY KEY,
+  id            VARCHAR(100) PRIMARY KEY,
   cid           VARCHAR(100) NOT NULL,
   documentType  VARCHAR(64) NOT NULL,
-  uploader      VARCHAR(36),
+  uploader      VARCHAR(100),
   originalName  VARCHAR(255),
   mimeType      VARCHAR(128),
   sizeBytes     BIGINT,

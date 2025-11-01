@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
+import api from '../config/api';
 
 export default function Home() {
   const [featuredCampaigns, setFeaturedCampaigns] = useState([]);
@@ -10,8 +11,8 @@ export default function Home() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/campaigns?featured=true').then(r => r.ok ? r.json() : { items: [] }),
-      fetch('/api/stats').then(r => r.ok ? r.json() : {})
+      api.get('/campaigns?featured=true').then(r => r.data).catch(() => ({ items: [] })),
+      api.get('/stats').then(r => r.data).catch(() => ({}))
     ])
       .then(([campaigns, statsData]) => {
         setFeaturedCampaigns(campaigns.items || []);

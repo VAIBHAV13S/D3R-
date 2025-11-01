@@ -1,24 +1,47 @@
-import React, { useContext } from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useContext, useEffect, useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { Web3Provider, Web3Context } from '../context/Web3Context';
 import { ToastProvider, useToast } from '../context/ToastContext';
+import { Spinner } from '@chakra-ui/react';
 
 function Header() {
-  const { account, balance, isConnected, connectWallet, disconnectWallet } = useContext(Web3Context);
+  const { 
+    account, 
+    balance, 
+    isConnected, 
+    isAuthenticated, 
+    isLoading, 
+    connectWallet, 
+    disconnectWallet 
+  } = useContext(Web3Context);
+  
   const { addToast } = useToast();
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const handleConnect = async () => {
+    if (isLoading || isConnecting) return;
+    
+    setIsConnecting(true);
     try {
       await connectWallet();
-      addToast('Wallet connected', 'success');
+      addToast('Wallet connected and authenticated', 'success');
     } catch (e) {
-      addToast(e.message || 'Failed to connect wallet', 'error');
+      console.error('Connection error:', e);
+      const errorMessage = e.message || 'Failed to connect wallet';
+      addToast(errorMessage, 'error');
+    } finally {
+      setIsConnecting(false);
     }
   };
 
   const handleDisconnect = () => {
-    disconnectWallet();
-    addToast('Wallet disconnected', 'info');
+    try {
+      disconnectWallet();
+      addToast('Disconnected successfully', 'info');
+    } catch (e) {
+      console.error('Disconnect error:', e);
+      addToast('Failed to disconnect', 'error');
+    }
   };
 
   return (
@@ -35,22 +58,96 @@ function Header() {
       </nav>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         {isConnected && balance && (
-          <div style={{ padding: '6px 10px', background: '#f1f5f9', borderRadius: 6, fontSize: 14, color: '#64748b' }}>
-            {balance} ETH
+          <div style={{ 
+            padding: '6px 10px', 
+            background: '#f1f5f9', 
+            borderRadius: 6, 
+            fontSize: 14, 
+            color: '#64748b',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4
+          }}>
+            <span>{balance}</span>
+            <span>ETH</span>
           </div>
         )}
+        
         {isConnected ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', fontSize: 14 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ 
+              padding: '8px 12px', 
+              borderRadius: 8, 
+              border: '1px solid #cbd5e1', 
+              background: '#fff', 
+              fontSize: 14,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}>
+              <span style={{ 
+                width: 8, 
+                height: 8, 
+                borderRadius: '50%', 
+                background: isAuthenticated ? '#10b981' : '#ef4444'
+              }} />
               {account.slice(0,6)}...{account.slice(-4)}
             </div>
-            <button onClick={handleDisconnect} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}>
-              Disconnect
+            <button 
+              onClick={handleDisconnect} 
+              style={{ 
+                padding: '8px 12px', 
+                borderRadius: 8, 
+                border: '1px solid #cbd5e1', 
+                background: '#fff', 
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                ':hover': {
+                  background: '#f8fafc'
+                }
+              }}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Spinner size="sm" mr={2} />
+                  Disconnecting...
+                </>
+              ) : 'Disconnect'}
             </button>
           </div>
         ) : (
-          <button onClick={handleConnect} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#111827', color: '#fff', cursor: 'pointer' }}>
-            Connect Wallet
+          <button 
+            onClick={handleConnect} 
+            style={{ 
+              padding: '8px 16px', 
+              borderRadius: 8, 
+              border: '1px solid transparent', 
+              background: '#111827', 
+              color: '#fff', 
+              cursor: 'pointer',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              ':hover': {
+                background: '#1f2937'
+              },
+              ':disabled': {
+                opacity: 0.7,
+                cursor: 'not-allowed'
+              }
+            }}
+            disabled={isLoading || isConnecting}
+          >
+            {(isLoading || isConnecting) ? (
+              <>
+                <Spinner size="sm" mr={2} />
+                Connecting...
+              </>
+            ) : 'Connect Wallet'}
           </button>
         )}
       </div>

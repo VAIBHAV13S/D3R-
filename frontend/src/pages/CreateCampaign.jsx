@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWeb3 } from '../hooks/useWeb3';
 import { useToast } from '../context/ToastContext';
+import api from '../config/api';
 
 export default function CreateCampaign() {
   const [formData, setFormData] = useState({
@@ -60,39 +61,36 @@ export default function CreateCampaign() {
         const formData = new FormData();
         formData.append('file', imageFile);
         formData.append('documentType', 'campaign-image');
-        const uploadRes = await fetch('/api/ipfs/upload', {
-          method: 'POST',
-          body: formData,
-          headers: { 'x-user-id': account },
+        
+        const uploadRes = await api.post('/ipfs/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'x-user-id': account,
+          },
         });
-        if (!uploadRes.ok) throw new Error('Image upload failed');
-        const uploadData = await uploadRes.json();
-        imageCID = uploadData.cid;
+        
+        if (uploadRes.data && uploadRes.data.cid) {
+          imageCID = uploadRes.data.cid;
+        } else {
+          throw new Error('Image upload failed: No CID returned');
+        }
       }
 
       // Create campaign
-      const res = await fetch('/api/campaigns', {
-        method: 'POST',
+      const response = await api.post('/campaigns', {
+        title,
+        description,
+        targetAmount: String(amt),
+        deadline: deadline || null,
+        disasterId: disasterId || null,
+        imageCID,
+      }, {
         headers: {
-          'Content-Type': 'application/json',
           'x-user-id': account,
         },
-        body: JSON.stringify({
-          title,
-          description,
-          targetAmount: String(amt),
-          deadline: deadline || null,
-          disasterId: disasterId || null,
-          imageCID, // Note: backend schema doesn't have imageCID yet; you may need to add it
-        }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to create campaign');
-      }
-
-      const data = await res.json();
+      const data = response.data;
       addToast('Campaign created successfully!', 'success');
       navigate(`/campaigns/${data.campaignId}`);
     } catch (err) {

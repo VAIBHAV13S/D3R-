@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import api from '../config/api';
 
 const useCampaignStore = create(
   devtools(
@@ -31,10 +32,8 @@ const useCampaignStore = create(
             ...(filters.sortOrder && { sortOrder: filters.sortOrder }),
           });
 
-          const response = await fetch(`/api/campaigns?${params}`);
-          if (!response.ok) throw new Error('Failed to fetch campaigns');
-          
-          const data = await response.json();
+          const response = await api.get(`/campaigns?${params}`);
+          const data = response.data;
           
           set({
             campaigns: data.items || [],
@@ -65,10 +64,8 @@ const useCampaignStore = create(
         }
 
         try {
-          const response = await fetch(`/api/campaigns/${id}`);
-          if (!response.ok) throw new Error('Campaign not found');
-          
-          const data = await response.json();
+          const response = await api.get(`/campaigns/${id}`);
+          const data = response.data;
           
           // Update cache
           set((state) => ({
@@ -123,18 +120,25 @@ const useCampaignStore = create(
       
       // Fetch donations for campaign
       fetchDonations: async (campaignId, page = 1, limit = 20) => {
+        const cacheKey = `${campaignId}-${page}-${limit}`;
+        const cached = get().donationsCache[cacheKey];
+        if (cached && Date.now() - cached.timestamp < 30000) {
+          return cached.data;
+        }
+
         try {
-          const response = await fetch(
-            `/api/campaigns/${campaignId}/donations?page=${page}&limit=${limit}`
+          const response = await api.get(
+            `/campaigns/${campaignId}/donations?page=${page}&limit=${limit}`
           );
-          if (!response.ok) throw new Error('Failed to fetch donations');
-          
-          const data = await response.json();
+          const data = response.data;
           
           set((state) => ({
             donationsCache: {
               ...state.donationsCache,
-              [campaignId]: data,
+              [cacheKey]: {
+                data,
+                timestamp: Date.now(),
+              },
             },
           }));
           
@@ -149,16 +153,22 @@ const useCampaignStore = create(
       
       // Fetch milestones for campaign
       fetchMilestones: async (campaignId) => {
+        const cached = get().milestonesCache[campaignId];
+        if (cached && Date.now() - cached.timestamp < 60000) {
+          return cached.data;
+        }
+
         try {
-          const response = await fetch(`/api/campaigns/${campaignId}/milestones`);
-          if (!response.ok) throw new Error('Failed to fetch milestones');
-          
-          const data = await response.json();
+          const response = await api.get(`/campaigns/${campaignId}/milestones`);
+          const data = response.data;
           
           set((state) => ({
             milestonesCache: {
               ...state.milestonesCache,
-              [campaignId]: data.items || [],
+              [campaignId]: {
+                data: data.items || [],
+                timestamp: Date.now(),
+              },
             },
           }));
           
